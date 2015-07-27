@@ -64,7 +64,7 @@ ggplot(data = myToothGrowth, aes(x = len)) +
         ggtitle("Histogram of teeth length")
 ```
 
-I don't know if this kind of exploration makes sense, because this 60 observations are not really *a population*, are much more the union of 6 different "snapshot"" of a population.
+I don't know if this kind of exploration makes sense, because this 60 observations are not really *a sample*, are much more the union of 6 different "snapshot"" of a sample.
 Let's plot them so.
 
 ```{r conditional boxplots, fig.height=3.5, fig.width=7.5}
@@ -74,7 +74,7 @@ ggplot(data = myToothGrowth, aes(x = factor(dose), y = len)) +
         ggtitle("Boxplot of teeth length")
 ```
 
-It seems that dose influences the growth of lenghts (very expected!) and that ascorbic acide is more effective than orange juice in facilitate this.
+It seems that dose influences the growth of lengths (very expected!) and that ascorbic acide is more effective than orange juice in facilitating this.
 Almost all samples are quiete symmetrical, which is good for our further analysis. **Infact we are deailing with paired small samples**, so it's likely we are going to use t-test to compare groups, and t-test needs quite normal population to be accurate. Of course we can't check the normality of population (unless we use some tools that were not taugth in the class, but students have been explicitly discouraged in doing so), so we must perform analysis on these small samples. Furthermore, being paired samples, it's better to plot the differences between lengths, as we will test them with the `t distribution`. I will do this in the `statistical analysis` chapter, after some data manipulation.
 
 ##Data manipulation
@@ -105,7 +105,7 @@ As seen before, we are dealing with 6 measurements on 10 subjects. These measure
 My idea is:
 
 * to compare lengths originated from different doses given with the same delivery method, to see if bigger dose (as we expect) related to bigger length;
-* to compare same doses given with different delivery methods, to see if different delivery method relates to different length (looking at the boxplots, i think it worth considering the dose 0.5 and 1, which seems the ones with bigger difference between lengths distributions and their averages).
+* to compare same doses given with different delivery methods, to see if different delivery method relates to different length (looking at the boxplots, i think it worths considering the dose 0.5 and 1, which seems the ones with bigger difference between lengths distributions and their averages).
 
 But first of all I need to perform some check on normality of differences, although the size is very very small. Naming convention is: `VC_1_05 = supp VC dose 1 - supp Vc dose 0.5` and `VC_OJ_05 = supp OJ - supp VC for dose 2`.
 
@@ -163,7 +163,7 @@ grid.arrange(g1, g2, g3, g4, g5, g6, ncol = 2, main = "Differences of lengths fo
 
 They are almost all quite normal, and considering that T test in quite robust to the normality assumtpions, we can be happy wity this results.
 
-Now we should alo plot the differences for same dose but different delivery method. We will proceed as usual: first creating a function, second plotting.
+Now we should also plot the differences for same dose but different delivery method. We will proceed as usual: first creating a function, second plotting.
 
 ```{r differences plot sd function}
 #function for plotting the differences for same dose but different same delivery methods
@@ -191,11 +191,11 @@ grid.arrange(gsd1, gsd2, gsd3, ncol = 1, main = "Differences of lengths for same
 ```
 
 
-It seems that really only dose 0.5 is far away from normality. We can go through the test now.
+It seems that only dose 0.5 is far away from normality. We can go through the test now.
 
 ###Hypothesis testing
 
-I really need first a function to plot the curve of our test statistics and the region of rejection.
+I do need first a function to plot the curve of our test statistics and the region of rejection.
 
 ```{r function for t plotting}
 tplot <- function(dof, tstat, conflev, two = TRUE) {
@@ -209,13 +209,13 @@ tplot <- function(dof, tstat, conflev, two = TRUE) {
                 g1 <- ggplot(mydf, aes(myx, myy)) +
                 geom_line(size = 1.2, colour = "black") +
                 geom_vline(xintercept = c(-tcrit, tcrit, tstat), colour = c("red", "red", "blue"), size = 0.9) +
-                ggtitle(paste("Hypothesis testing for t =", tstat ))
+                ggtitle(paste("Hypothesis testing for t =", round(tstat,3) ))
         return(g1)
         } else {
                 g2 <- ggplot(mydf, aes(myx, myy)) +
                 geom_line(size = 1.2, colour = "black") +
                 geom_vline(xintercept = c(tcrit, tstat), colour = c("red", "blue"), size = 0.9) +
-                ggtitle(paste("Hypothesis testing for t =", tstat ))
+                ggtitle(paste("Hypothesis testing for t =", round(tstat,3) ))
                 return(g2)
         }
 }
@@ -225,7 +225,7 @@ Now let's perform the tests. As R provide a function to perform t test for paire
 
 For every single difference vector I want to test, i will provide a plot and a comment. Looking at the plot remember that the red line represents the rejection region, while the blue one is the t statistics result of the test.
 
-The alternative hypothesis will be *greater* per different doses of same delivery method, and *two.sided* for same dose of different delivery methods. The confidence level is $0.95$.
+The alternative hypothesis will be *greater* for different doses of same delivery method, and *two.sided* for same dose of different delivery methods. The confidence level is $0.95$.
 
 ####Ascorbic acid: dose 2 and 0.5
 
@@ -379,9 +379,7 @@ Also for dose 0.5 t statistic is higher than critical value, so **the null hypot
 
 Our t test reveals basically two things:
 
-1. **bigger dose, bigger average difference of lengths**, but: in the context of the single delivery method, ascorbic acid enables a bigger effectiveness of dose: you see this in the higher values of the t statistics in the tests and also in the conditional boxplots, where there is bigger distance between the means of lengths originated from the 3 doses.
+1. **bigger dose, bigger average difference of lengths**, but: in the context of the single delivery method, ascorbic acid enables a bigger effectiveness of dose: you see this in the higher values of the t statistics in the tests and also in the conditional boxplots, where there is bigger distance between the boxes of lengths originated from the 3 doses.
 
 2. Giving the same dose with two different delivery methods generates, for doe 0.5 and 1, different average difference of lengths: **orange juice generates a higher average difference**. The same things is understandable from the conditional boxplot, where orange juice is, in two out ot three cases, higher than acorbic acid.
 
-
-ascorbic acid da più potere alla dose di orange juice.
