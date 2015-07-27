@@ -64,7 +64,7 @@ ggplot(data = myToothGrowth, aes(x = len)) +
         ggtitle("Histogram of teeth length")
 ```
 
-I don't know if this kind of exploration makes sense, because this 60 observations are not really *a population*, are much more the sum of 6 different "snapshot"" of a population.
+I don't know if this kind of exploration makes sense, because this 60 observations are not really *a population*, are much more the union of 6 different "snapshot"" of a population.
 Let's plot them so.
 
 ```{r conditional boxplots, fig.height=3.5, fig.width=7.5}
@@ -75,7 +75,7 @@ ggplot(data = myToothGrowth, aes(x = factor(dose), y = len)) +
 ```
 
 It seems that dose influences the growth of lenghts (very expected!) and that ascorbic acide is more effective than orange juice in facilitate this.
-Almost all population are quiete symmetrical, which is good for our further analysis. **Infact we are deailing with paired small samples**, so it's likely we are going to use t-test to compare groups, and t-test needs quite normal population to be accurate. Of course we can't check the normality of population (unless we use some tools that were not taugth in the class, but students have been explicitly discouraged in doing so), so we must perform analysis on these small samples. Furthermore, being paired samples, it's better to plot the differences between lengths, as we will test them with the `t distribution`. I will do this in the `statistical analysis` chapter, after some data manipulation.
+Almost all samples are quiete symmetrical, which is good for our further analysis. **Infact we are deailing with paired small samples**, so it's likely we are going to use t-test to compare groups, and t-test needs quite normal population to be accurate. Of course we can't check the normality of population (unless we use some tools that were not taugth in the class, but students have been explicitly discouraged in doing so), so we must perform analysis on these small samples. Furthermore, being paired samples, it's better to plot the differences between lengths, as we will test them with the `t distribution`. I will do this in the `statistical analysis` chapter, after some data manipulation.
 
 ##Data manipulation
 
@@ -100,11 +100,11 @@ head(myToothGrowth3)
 
 ##Statistical analysis
 
-As seen before, we are dealing witg 6 measurements on 10 subjects. These measurements were taken in 2 different conditions, let'say: *Orange juice* and *Ascorbic acid*. So we must be very careful in comparing two measurements belonging to different conditions.
+As seen before, we are dealing with 6 measurements on 10 subjects. These measurements were taken in 2 different conditions, let's say: *Orange juice* and *Ascorbic acid*. So we must be very careful in comparing two measurements belonging to different conditions.
 
 My idea is:
 
-* to compare lengths derived from different doses given with the same delivery method, to see if bigger dose (as we expect) related to bigger length;
+* to compare lengths originated from different doses given with the same delivery method, to see if bigger dose (as we expect) related to bigger length;
 * to compare same doses given with different delivery methods, to see if different delivery method relates to different length (looking at the boxplots, i think it worth considering the dose 0.5 and 1, which seems the ones with bigger difference between lengths distributions and their averages).
 
 But first of all I need to perform some check on normality of differences, although the size is very very small. Naming convention is: `VC_1_05 = supp VC dose 1 - supp Vc dose 0.5` and `VC_OJ_05 = supp OJ - supp VC for dose 2`.
@@ -241,7 +241,7 @@ tVC_2_05
 tplot(dof = 9, tstat = tVC_2_05$statistic, conflev = 0.95, two = FALSE)
 ```
 
-The t statistic is incredibly high, with a p-value near to 0. Of course is not by chance that the mean of differences between the lengths derived by dose 2 and 0.5 is higher than 0, so **the null hypothesis is rejected**.
+The t statistic is incredibly high, with a p-value near to 0. Of course is not by chance that the mean of differences between the lengths originated from dose 2 and 0.5 is higher than 0, so **the null hypothesis is rejected**.
 
 ####Ascorbic acid: dose 2 and 1
 
@@ -291,7 +291,7 @@ tOJ_2_05
 tplot(dof = 9, tstat = tOJ_2_05$statistic, conflev = 0.95, two = FALSE)
 ```
 
-The t statistic is incredibly high, with a p-value near to 0. Of course is not by chance that the mean of differences between the lengths derived by dose 2 and 0.5 is higher than 0, so **the null hypothesis is rejected**.
+The t statistic is incredibly high, with a p-value near to 0. Of course is not by chance that the mean of differences between the lengths originated from dose 2 and 0.5 is higher than 0, so **the null hypothesis is rejected**.
 
 ####Orange juice: dose 2 and 1
 
@@ -373,13 +373,13 @@ t_VC_OJ_05
 tplot(dof = 9, tstat = t_VC_OJ_05$statistic, conflev = 0.95, two = TRUE)
 ```
 
-Alos for dose 0.5 t statistic is higher than critical value, so **the null hypothesis is rejected**.
+Also for dose 0.5 t statistic is higher than critical value, so **the null hypothesis is rejected**.
 
 ##Conclusions
 
 Our t test reveals basically two things:
 
-1. **bigger dose, bigger average difference of lengths**, but: in the context of the single delivery method, ascorbic acid enables a bigger effectiveness of dose: you see this in the higher values of the t statistics in the tests and also in the conditional boxplot of $plot3$, where there is bigger distance between the means of lengths derived from the 3 doses.
+1. **bigger dose, bigger average difference of lengths**, but: in the context of the single delivery method, ascorbic acid enables a bigger effectiveness of dose: you see this in the higher values of the t statistics in the tests and also in the conditional boxplots, where there is bigger distance between the means of lengths originated from the 3 doses.
 
 2. Giving the same dose with two different delivery methods generates, for doe 0.5 and 1, different average difference of lengths: **orange juice generates a higher average difference**. The same things is understandable from the conditional boxplot, where orange juice is, in two out ot three cases, higher than acorbic acid.
 
