@@ -1,0 +1,387 @@
+---
+title: "Tooth Growth Analysis"
+author: "Americo"
+date: "19 luglio 2015"
+output: html_document
+---
+
+```{r wd, echo = FALSE, message=FALSE}
+setwd("/Users/Americo/Documents/Education/Data_science/Coursera/Statinference/statistical_inference_analysis")
+```
+
+##Packages
+Main packages been used are `dplyr`, `ggplot2`, `grid`.
+```{r loading packages, echo=FALSE, message = FALSE}
+require(dplyr)
+require(ggplot2)
+require(datasets)
+require(tidyr)
+require(grid)
+require(gridExtra)
+```
+
+
+##Goals
+We're going to analyze the ToothGrowth data in the R datasets package to perform some basic exploratory data analyses.
+Goals are to:
+
+* provide a basic summary of the data;
+* use confidence intervals and/or hypothesis tests to compare tooth growth by supp and dose (we'll only use the techniques from class, even if there's other approaches worth considering);
+* state  conclusions and the assumptions needed for  conclusions. 
+
+##Dataset
+Loading the dataset and studying the variables through the codebook and some initial exploration.
+```{r loading dataset}
+data(ToothGrowth)
+head(ToothGrowth)
+tail(ToothGrowth)
+dim(ToothGrowth)
+str(ToothGrowth)
+myToothGrowth <- ToothGrowth
+```
+
+The dataset is composed by measurements on 10 pigs regarding the length of teeth (variable `len`) after the somministration of three different dose of vitamin (the variable `dose`) and two delivery methods (orange juice or ascorbic acid - the variable `supp`).
+
+##Exploratory data analysis
+
+How delivery methods and doses are distributed?
+
+There is not a column dedicated to the ID of the ten pigs, so I assume that the measurements are ordered this way: each ten observations represents a dose of vitamin, the first 30 with a delivery methods and the second 30 with the other one.
+```{r barcharts, fig.height=3, fig.width=7.5}
+ggplot(data = myToothGrowth, aes(x = supp, fill = factor(dose))) +
+        geom_bar(width = 0.5) +
+        guides(fill=guide_legend(reverse=TRUE)) +
+        ggtitle("distribution of doses and delivery methods")
+```
+
+My assumption (*I assume that the measurements are ordered this way: each ten observations represents a dose of vitamin, the first 30 with a delivery methods and the second 30 with the other one*) seem confirmed by the plot.
+
+Let'see the distribution of teeth's lengths.
+
+```{r first histogram, fig.height=5, fig.width=7.5}
+ggplot(data = myToothGrowth, aes(x = len)) +
+               geom_histogram(binwidth = 1, colour = "black", fill = "gray") +
+        ggtitle("Histogram of teeth length")
+```
+
+I don't know if this kind of exploration makes sense, because this 60 observations are not really *a population*, are much more the sum of 6 different "snapshot"" of a population.
+Let's plot them so.
+
+```{r conditional boxplots, fig.height=3.5, fig.width=7.5}
+ggplot(data = myToothGrowth, aes(x = factor(dose), y = len)) +
+        geom_boxplot() +
+        facet_wrap(~supp) +
+        ggtitle("Boxplot of teeth length")
+```
+
+It seems that dose influences the growth of lenghts (very expected!) and that ascorbic acide is more effective than orange juice in facilitate this.
+Almost all population are quiete symmetrical, which is good for our further analysis. **Infact we are deailing with paired small samples**, so it's likely we are going to use t-test to compare groups, and t-test needs quite normal population to be accurate. Of course we can't check the normality of population (unless we use some tools that were not taugth in the class, but students have been explicitly discouraged in doing so), so we must perform analysis on these small samples. Furthermore, being paired samples, it's better to plot the differences between lengths, as we will test them with the `t distribution`. I will do this in the `statistical analysis` chapter, after some data manipulation.
+
+##Data manipulation
+
+I want to create a dataframe with 7 variables, the 6 measurements and the ID of the subjects. It seems to me the better way to flexibly perform t-tests.
+
+```{r manipulation}
+mydfs <- list()
+j <- 1:10
+for (i in 1:6) {
+        mydfs[[i]] <- myToothGrowth[j,]
+        names(mydfs[[i]]) <- c(paste("len", i), paste("supp", i),paste("dose", i))
+        j <- j + 10
+}
+myToothGrowth2 <- bind_cols(mydfs)
+myToothGrowth2$pig_id <- 1:10
+
+#renaming variables to have a smaller dataframe
+myToothGrowth3 <- myToothGrowth2[, seq(1, 19, 3)]
+names(myToothGrowth3)  <- c("lenVC_05", "lenVC_1", "lenVC_2", "lenOJ_05", "lenOJ_1", "lenOJ_2", "pig_id")
+head(myToothGrowth3)
+```
+
+##Statistical analysis
+
+As seen before, we are dealing witg 6 measurements on 10 subjects. These measurements were taken in 2 different conditions, let'say: *Orange juice* and *Ascorbic acid*. So we must be very careful in comparing two measurements belonging to different conditions.
+
+My idea is:
+
+* to compare lengths derived from different doses given with the same delivery method, to see if bigger dose (as we expect) related to bigger length;
+* to compare same doses given with different delivery methods, to see if different delivery method relates to different length (looking at the boxplots, i think it worth considering the dose 0.5 and 1, which seems the ones with bigger difference between lengths distributions and their averages).
+
+But first of all I need to perform some check on normality of differences, although the size is very very small. Naming convention is: `VC_1_05 = supp VC dose 1 - supp Vc dose 0.5` and `VC_OJ_05 = supp OJ - supp VC for dose 2`.
+
+###Verification of normality assumptions
+
+First of all I will create a dataframe of the differences between all the vectors I aim to compare.
+
+```{r difference dataframe}
+myToothGrowth_diff <- data.frame (
+        lenVC_1_05 = myToothGrowth3$lenVC_1 - myToothGrowth3$lenVC_05,
+        lenVC_2_1 = myToothGrowth3$lenVC_2 - myToothGrowth3$lenVC_1,
+        lenVC_2_05 = myToothGrowth3$lenVC_2 - myToothGrowth3$lenVC_05,
+        lenOJ_1_05 = myToothGrowth3$lenOJ_1 - myToothGrowth3$lenOJ_05,
+        lenOJ_2_1 = myToothGrowth3$lenOJ_2 - myToothGrowth3$lenOJ_1,
+        lenOJ_2_05 = myToothGrowth3$lenOJ_2 - myToothGrowth3$lenOJ_05,
+        lenVC_OJ_05 = myToothGrowth3$lenOJ_05 - myToothGrowth3$lenVC_05,
+        lenVC_OJ_1 = myToothGrowth3$lenOJ_1 - myToothGrowth3$lenVC_1,
+        lenVC_OJ_2 = myToothGrowth3$lenOJ_2 - myToothGrowth3$lenVC_2)
+
+head(myToothGrowth_diff)
+```
+
+
+Now I will create a function to plot the differences between the same delivery methods.
+After that I will plot them adjusting the binwidth in order to approximate as best as I can normality.
+
+```{r differences plot function}
+#function for plotting the differences in the same delivery methods
+toothnormalplot <- function(mydf, bin, supp, doseup, dosedown) {
+        attach(mydf)
+        mytitle <- sprintf("length difference between dose %s and %s given with %s", doseup, dosedown, supp)
+        mydf$myx <- eval(parse(text = sprintf("len%s_%s_%s", supp, doseup, dosedown)))
+        g1 <- ggplot(data = mydf, aes(x = myx)) +
+                geom_histogram(binwidth = bin, colour = "black", fill = "gray") +
+                ggtitle(label = mytitle) +
+                xlab(label = sprintf("len%s_%s_%s", supp, doseup, dosedown))
+        return(g1)
+        detach(mydf)
+}
+```
+
+```{r difference plots same delivery method, error=FALSE, message=FALSE, warning=FALSE}
+g1 <- toothnormalplot(mydf = myToothGrowth_diff, bin = 3, supp = "VC", doseup = "2", dosedown = "1")
+g2 <- toothnormalplot(mydf = myToothGrowth_diff, bin = 3, supp = "VC", doseup = "1", dosedown = "05")
+g3 <- toothnormalplot(mydf = myToothGrowth_diff, bin = 3, supp = "VC", doseup = "2", dosedown = "05")
+g4 <- toothnormalplot(mydf = myToothGrowth_diff, bin = 3, supp = "OJ", doseup = "2", dosedown = "1")
+g5 <- toothnormalplot(mydf = myToothGrowth_diff, bin = 3, supp = "OJ", doseup = "1", dosedown = "05")
+g6 <- toothnormalplot(mydf = myToothGrowth_diff, bin = 3, supp = "OJ", doseup = "2", dosedown = "05")
+```
+
+```{r multiplot, fig.height=15, fig.width=12}
+grid.arrange(g1, g2, g3, g4, g5, g6, ncol = 2, main = "Differences of lengths for different doses of same delivery methods")
+```
+
+
+They are almost all quite normal, and considering that T test in quite robust to the normality assumtpions, we can be happy wity this results.
+
+Now we should alo plot the differences for same dose but different delivery method. We will proceed as usual: first creating a function, second plotting.
+
+```{r differences plot sd function}
+#function for plotting the differences for same dose but different same delivery methods
+toothnormalplotsd <- function(mydf, bin, suppup, suppdown, dose) {
+        attach(mydf)
+        mytitle <- sprintf("length difference between delivery method %s and delivery method %s for dose %s", suppup, suppdown, dose)
+        mydf$myxsd <- eval(parse(text = sprintf("len%s_%s_%s", suppdown, suppup, dose)))
+        g1 <- ggplot(data = mydf, aes(x = myxsd)) +
+                geom_histogram(binwidth = bin, colour = "black", fill = "gray") +
+                ggtitle(label = mytitle) +
+                xlab(label = sprintf("len%s_%s_%s", suppdown, suppup, dose))
+        return(g1)
+        detach(mydf)
+}
+```
+
+```{r difference plots different delivery method, message=FALSE}
+gsd1 <- toothnormalplotsd(myToothGrowth_diff, 3, "OJ", "VC", "05")
+gsd2 <- toothnormalplotsd(myToothGrowth_diff, 3, "OJ", "VC", "1")
+gsd3 <- toothnormalplotsd(myToothGrowth_diff, 3, "OJ", "VC", "2")
+```
+
+```{r multiplot difference plots different delivery method, fig.height=15, fig.width=12}
+grid.arrange(gsd1, gsd2, gsd3, ncol = 1, main = "Differences of lengths for same dose of different delivery method")
+```
+
+
+It seems that really only dose 0.5 is far away from normality. We can go through the test now.
+
+###Hypothesis testing
+
+I really need first a function to plot the curve of our test statistics and the region of rejection.
+
+```{r function for t plotting}
+tplot <- function(dof, tstat, conflev, two = TRUE) {
+        myx <- seq(-4, 4, length=100)
+        hx <- dnorm(myx)
+        degf <- dof
+        mydf <- data.frame (myx, myy = dt(myx, degf))
+        pcum <- ifelse(two == TRUE, conflev+((1-conflev)/2), conflev)
+        tcrit  <- qt(p = pcum, df = dof)
+        if (two == TRUE) {
+                g1 <- ggplot(mydf, aes(myx, myy)) +
+                geom_line(size = 1.2, colour = "black") +
+                geom_vline(xintercept = c(-tcrit, tcrit, tstat), colour = c("red", "red", "blue"), size = 0.9) +
+                ggtitle(paste("Hypothesis testing for t =", tstat ))
+        return(g1)
+        } else {
+                g2 <- ggplot(mydf, aes(myx, myy)) +
+                geom_line(size = 1.2, colour = "black") +
+                geom_vline(xintercept = c(tcrit, tstat), colour = c("red", "blue"), size = 0.9) +
+                ggtitle(paste("Hypothesis testing for t =", tstat ))
+                return(g2)
+        }
+}
+```
+
+Now let's perform the tests. As R provide a function to perform t test for paired samples, I am not going to use anymore the `myToothGrowth_diff` dataframe, instead i will use the `myToothGrowth3` one.
+
+For every single difference vector I want to test, i will provide a plot and a comment. Looking at the plot remember that the red line represents the rejection region, while the blue one is the t statistics result of the test.
+
+The alternative hypothesis will be *greater* per different doses of same delivery method, and *two.sided* for same dose of different delivery methods. The confidence level is $0.95$.
+
+####Ascorbic acid: dose 2 and 0.5
+
+* *null hypothesis*: mean of differences equal to 0
+* *alternative hypothesis*: mean of differences greater than 0
+
+```{r test Ascorbic acid: dose 2 and 0.5}
+tVC_2_05 <- t.test(x = myToothGrowth3$lenVC_2, y = myToothGrowth3$lenVC_05, alternative = "greater", paired = TRUE, conf.level = 0.95)
+tVC_2_05
+```
+
+```{r plot test Ascorbic acid: dose 2 and 0.5, fig.height=5, fig.width=10}
+tplot(dof = 9, tstat = tVC_2_05$statistic, conflev = 0.95, two = FALSE)
+```
+
+The t statistic is incredibly high, with a p-value near to 0. Of course is not by chance that the mean of differences between the lengths derived by dose 2 and 0.5 is higher than 0, so **the null hypothesis is rejected**.
+
+####Ascorbic acid: dose 2 and 1
+
+* *null hypothesis*: mean of differences equal to 0
+* *alternative hypothesis*: mean of differences greater than 0
+
+```{r test Ascorbic acid: dose 2 and 1}
+tVC_2_1 <- t.test(x = myToothGrowth3$lenVC_2, y = myToothGrowth3$lenVC_1, alternative = "greater", paired = TRUE, conf.level = 0.95)
+tVC_2_1
+```
+
+```{r plot test Ascorbic acid: dose 2 and 1, fig.height=5, fig.width=10}
+tplot(dof = 9, tstat = tVC_2_1$statistic, conflev = 0.95, two = FALSE)
+```
+
+The t statistic, is higher than the critical value, with a p-value near to 0 as well, so **the null hypothesis is rejected**.
+
+####Ascorbic acid: dose 1 and 0.5
+
+* *null hypothesis*: mean of differences equal to 0
+* *alternative hypothesis*: mean of differences greater than 0
+
+```{r test Ascorbic acid: dose 1 and 0.5}
+tVC_1_05 <- t.test(x = myToothGrowth3$lenVC_1, y = myToothGrowth3$lenVC_05, alternative = "greater", paired = TRUE, conf.level = 0.95)
+tVC_1_05
+```
+
+```{r plot test Ascorbic acid: dose 1 and 0.5, fig.height=5, fig.width=10}
+tplot(dof = 9, tstat = tVC_1_05$statistic, conflev = 0.95, two = FALSE)
+```
+
+The t statistic is higher than the critical value, with a p-value near to 0 as well, so **the null hypothesis is rejected**.
+
+So also a small difference in doses (only 0.5) if given with ascorbic acid is associated with a relevant growth of the teeth lengths.
+
+####Orange juice: dose 2 and 0.5
+
+* *null hypothesis*: mean of differences equal to 0
+* *alternative hypothesis*: mean of differences greater than 0
+
+```{r test Orange juice: dose 2 and 0.5}
+tOJ_2_05 <- t.test(x = myToothGrowth3$lenOJ_2, y = myToothGrowth3$lenOJ_05, alternative = "greater", paired = TRUE, conf.level = 0.95)
+tOJ_2_05
+```
+
+```{r plot test Orange juice: dose 2 and 0.5, fig.height=5, fig.width=10}
+tplot(dof = 9, tstat = tOJ_2_05$statistic, conflev = 0.95, two = FALSE)
+```
+
+The t statistic is incredibly high, with a p-value near to 0. Of course is not by chance that the mean of differences between the lengths derived by dose 2 and 0.5 is higher than 0, so **the null hypothesis is rejected**.
+
+####Orange juice: dose 2 and 1
+
+* *null hypothesis*: mean of differences equal to 0
+* *alternative hypothesis*: mean of differences greater than 0
+
+```{r test Orange juice: dose 2 and 1}
+tOJ_2_1 <- t.test(x = myToothGrowth3$lenOJ_2, y = myToothGrowth3$lenOJ_1, alternative = "greater", paired = TRUE, conf.level = 0.95)
+tOJ_2_1
+```
+
+```{r plot test Orange juice: dose 2 and 1, fig.height=5, fig.width=10}
+tplot(dof = 9, tstat = tOJ_2_1$statistic, conflev = 0.95, two = FALSE)
+```
+
+Wow. For the first time the t statistic is close to the critical value, with a p-value a little bit smaller than the significance level. Anyway **the null hypothesis is rejected**, but with lower attained significance level. This is confirmed by the exploratory boxplot at the beginning of the report.
+
+####Orange juice: dose 1 and 0.5
+
+* *null hypothesis*: mean of differences equal to 0
+* *alternative hypothesis*: mean of differences greater than 0
+
+```{r test Orange juice: dose 1 and 0.5}
+tOJ_1_05 <- t.test(x = myToothGrowth3$lenOJ_1, y = myToothGrowth3$lenOJ_05, alternative = "greater", paired = TRUE, conf.level = 0.95)
+tOJ_1_05
+```
+
+```{r plot test Orange juice: dose 1 and 0.5, fig.height=5, fig.width=10}
+tplot(dof = 9, tstat = tOJ_1_05$statistic, conflev = 0.95, two = FALSE)
+```
+
+The t statistic is higher than the critical value, so **the null hypothesis is rejected**.
+
+So also a small difference in doses (only 0.5) if given with orange juice is associated with a relevant growth of the teeth lengths.
+
+####Different delivery methods: dose 2
+
+* *null hypothesis*: mean of differences equal to 0
+* *alternative hypothesis*: mean of differences not equal to 0
+
+```{r test diff meth dose 2}
+t_VC_OJ_2 <- t.test(x = myToothGrowth3$lenOJ_2, y = myToothGrowth3$lenVC_2, alternative = "two.sided", paired = TRUE, conf.level = 0.95)
+t_VC_OJ_2
+```
+
+```{r plot test diff meth dose 2, fig.height=5, fig.width=10}
+tplot(dof = 9, tstat = t_VC_OJ_2$statistic, conflev = 0.95, two = TRUE)
+```
+
+Huge p-value, t statistic close to 0. Of course **the null hypothesis is accepted**, and we are forced to say that the dose 2 given with different delivery method generates an average difference of teeth lengths equal to 0.
+
+####Different delivery methods: dose 1
+
+* *null hypothesis*: mean of differences equal to 0
+* *alternative hypothesis*: mean of differences not equal to 0
+
+```{r test diff meth dose 1}
+t_VC_OJ_1 <- t.test(x = myToothGrowth3$lenOJ_1, y = myToothGrowth3$lenVC_1, alternative = "two.sided", paired = TRUE, conf.level = 0.95)
+t_VC_OJ_1
+```
+
+```{r plot test diff meth dose 1, fig.height=5, fig.width=10}
+tplot(dof = 9, tstat = t_VC_OJ_1$statistic, conflev = 0.95, two = TRUE)
+```
+
+Wow. At dose 1 things change a lot, t statistic higher than critical value, so **the null hypothesis is rejected**. It seems that dose 1 given with orange juice produces a growth in lengths higher than the one given by ascorbic acid.
+
+####Different delivery methods: dose 0.5
+
+* *null hypothesis*: mean of differences equal to 0
+* *alternative hypothesis*: mean of differences not equal to 0
+
+```{r test diff meth dose 05}
+t_VC_OJ_05 <- t.test(x = myToothGrowth3$lenOJ_05, y = myToothGrowth3$lenVC_05, alternative = "two.sided", paired = TRUE, conf.level = 0.95)
+t_VC_OJ_05
+```
+
+```{r plot test diff meth dose 05, fig.height=5, fig.width=10}
+tplot(dof = 9, tstat = t_VC_OJ_05$statistic, conflev = 0.95, two = TRUE)
+```
+
+Alos for dose 0.5 t statistic is higher than critical value, so **the null hypothesis is rejected**.
+
+##Conclusions
+
+Our t test reveals basically two things:
+
+1. **bigger dose, bigger average difference of lengths**, but: in the context of the single delivery method, ascorbic acid enables a bigger effectiveness of dose: you see this in the higher values of the t statistics in the tests and also in the conditional boxplot of $plot3$, where there is bigger distance between the means of lengths derived from the 3 doses.
+
+2. Giving the same dose with two different delivery methods generates, for doe 0.5 and 1, different average difference of lengths: **orange juice generates a higher average difference**. The same things is understandable from the conditional boxplot, where orange juice is, in two out ot three cases, higher than acorbic acid.
+
+
+ascorbic acid da più potere alla dose di orange juice.
